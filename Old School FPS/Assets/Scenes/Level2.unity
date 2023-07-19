@@ -7148,6 +7148,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3186082177746330299, guid: ad4d1a17ee17f804e8a17fcdb2597ca7, type: 3}
+      propertyPath: dropsKeycard
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3186082177746330299, guid: ad4d1a17ee17f804e8a17fcdb2597ca7, type: 3}
       propertyPath: points.Array.size
       value: 2
       objectReference: {fileID: 0}
