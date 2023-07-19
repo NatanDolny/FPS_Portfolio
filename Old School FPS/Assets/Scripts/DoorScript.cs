@@ -37,9 +37,9 @@ public class DoorScript : MonoBehaviour
     {
         if (!openDoor)
         {
-            if ((powerSourceA.transform.Find("Body").gameObject.activeSelf == false &&
+            if ((ignorePowerSource && playerStats.canProceed) || (powerSourceA.transform.Find("Body").gameObject.activeSelf == false &&
                 powerSourceB.transform.Find("Body").gameObject.activeSelf == false && 
-                playerStats.canProceed) || (ignorePowerSource && playerStats.canProceed))
+                playerStats.canProceed))
             {
                 if (lastEnemiesParent.childCount == 0)
                     OpenDoor();
