@@ -62,6 +62,24 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Swap"",
+                    ""type"": ""Button"",
+                    ""id"": ""e4276581-009c-418c-8acf-10d18b44d7e4"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Pause"",
+                    ""type"": ""Button"",
+                    ""id"": ""d13b1212-e7f7-4fab-8d94-d7c73a7e7b78"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -163,6 +181,28 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
                     ""action"": ""Jump"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2c070e83-b304-45ba-9a9a-36f468894ca5"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Swap"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""43359937-ba7c-4ad3-bd35-d69b4130a113"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Pause"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -175,6 +215,8 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
         m_Movement_Aiming = m_Movement.FindAction("Aiming", throwIfNotFound: true);
         m_Movement_Attack = m_Movement.FindAction("Attack", throwIfNotFound: true);
         m_Movement_Jump = m_Movement.FindAction("Jump", throwIfNotFound: true);
+        m_Movement_Swap = m_Movement.FindAction("Swap", throwIfNotFound: true);
+        m_Movement_Pause = m_Movement.FindAction("Pause", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -238,6 +280,8 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
     private readonly InputAction m_Movement_Aiming;
     private readonly InputAction m_Movement_Attack;
     private readonly InputAction m_Movement_Jump;
+    private readonly InputAction m_Movement_Swap;
+    private readonly InputAction m_Movement_Pause;
     public struct MovementActions
     {
         private @PlayerMovement m_Wrapper;
@@ -246,6 +290,8 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
         public InputAction @Aiming => m_Wrapper.m_Movement_Aiming;
         public InputAction @Attack => m_Wrapper.m_Movement_Attack;
         public InputAction @Jump => m_Wrapper.m_Movement_Jump;
+        public InputAction @Swap => m_Wrapper.m_Movement_Swap;
+        public InputAction @Pause => m_Wrapper.m_Movement_Pause;
         public InputActionMap Get() { return m_Wrapper.m_Movement; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -267,6 +313,12 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
                 @Jump.started -= m_Wrapper.m_MovementActionsCallbackInterface.OnJump;
                 @Jump.performed -= m_Wrapper.m_MovementActionsCallbackInterface.OnJump;
                 @Jump.canceled -= m_Wrapper.m_MovementActionsCallbackInterface.OnJump;
+                @Swap.started -= m_Wrapper.m_MovementActionsCallbackInterface.OnSwap;
+                @Swap.performed -= m_Wrapper.m_MovementActionsCallbackInterface.OnSwap;
+                @Swap.canceled -= m_Wrapper.m_MovementActionsCallbackInterface.OnSwap;
+                @Pause.started -= m_Wrapper.m_MovementActionsCallbackInterface.OnPause;
+                @Pause.performed -= m_Wrapper.m_MovementActionsCallbackInterface.OnPause;
+                @Pause.canceled -= m_Wrapper.m_MovementActionsCallbackInterface.OnPause;
             }
             m_Wrapper.m_MovementActionsCallbackInterface = instance;
             if (instance != null)
@@ -283,6 +335,12 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
                 @Jump.started += instance.OnJump;
                 @Jump.performed += instance.OnJump;
                 @Jump.canceled += instance.OnJump;
+                @Swap.started += instance.OnSwap;
+                @Swap.performed += instance.OnSwap;
+                @Swap.canceled += instance.OnSwap;
+                @Pause.started += instance.OnPause;
+                @Pause.performed += instance.OnPause;
+                @Pause.canceled += instance.OnPause;
             }
         }
     }
@@ -293,5 +351,7 @@ public partial class @PlayerMovement : IInputActionCollection2, IDisposable
         void OnAiming(InputAction.CallbackContext context);
         void OnAttack(InputAction.CallbackContext context);
         void OnJump(InputAction.CallbackContext context);
+        void OnSwap(InputAction.CallbackContext context);
+        void OnPause(InputAction.CallbackContext context);
     }
 }

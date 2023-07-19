@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Level2.unity
     guid: d6cdef75643da2d49ab819d44ee87448
   - enabled: 1
+    path: Assets/Scenes/Level3.unity
+    guid: 91d4c8eaae941f848a98487a04375ca2
+  - enabled: 1
     path: Assets/Scenes/DeathMenu.unity
     guid: 112795184dc62e245889dbf47a2d9d8f
   - enabled: 1
@@ -23,4 +26,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/WinScreen.unity
     guid: b8d4bf3559dc6d443865caabc47101fa
+  - enabled: 1
+    path: Assets/Scenes/Controls.unity
+    guid: 90639b255d7ca634f863b6b579875331
   m_configObjects: {}

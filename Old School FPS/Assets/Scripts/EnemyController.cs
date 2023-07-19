@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.AI; 
+using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour
 {
@@ -12,10 +12,16 @@ public class EnemyController : MonoBehaviour
     public bool dropsKeycard = false;
 
     GameObject player;
-    GameObject sprite;
+    PlayerController playerController;
+    [HideInInspector] public GameObject sprite;
     GameObject head;
     GameObject torso;
-    AudioSource audioSource;
+    AudioSource shotAudioSource;
+    AudioSource painAudioSource;
+    
+    public AudioClip[] painGrunts;
+    public AudioClip[] deathGrunts;
+
     public GameObject[] covers;
 
     public int hitPoints = 2;
@@ -62,6 +68,10 @@ public class EnemyController : MonoBehaviour
     public float coverDistance;
     public bool coverChecked = false;
     public bool defaultCover = false;
+    public bool forceIdle;
+
+    Vector3 originalScale;
+
     public enum CurrentState
     {
         IDLE = 0, 
@@ -81,39 +91,47 @@ public class EnemyController : MonoBehaviour
 
     public void Awake()
     {
+        player = GameObject.FindGameObjectWithTag("Player");
+        playerController = player.GetComponent<PlayerController>();
         agent = GetComponent<NavMeshAgent>();
         sprite = transform.Find("Sprite").gameObject;
         head = sprite.transform.Find("Head").gameObject;
         torso = sprite.transform.Find("Head").gameObject;
         animator = transform.GetComponentInChildren<Animator>();
+        originalScale = sprite.transform.localScale;
     }
 
     // Start is called before the first frame update
     void Start()
     {
-        player = GameObject.FindGameObjectWithTag("Player");
         playerStats = player.GetComponent<PlayerStats>();
         originalHP = hitPoints;
         covers = GameObject.FindGameObjectsWithTag("Cover");
-        audioSource = transform.Find("AudioSource").GetComponent<AudioSource>();
+        shotAudioSource = transform.Find("ShotSource").GetComponent<AudioSource>();
+        painAudioSource = transform.Find("PainSource").GetComponent<AudioSource>();
     }
 
     private void Update()
     {
-        if (hitPoints < originalHP)
+        if (!playerController.paused)
         {
-            aggroed = true;
+            if (hitPoints < originalHP)
+            {
+                aggroed = true;
+            }
+            StateLogic();
+            DirectionLogic();
         }
-        StateLogic();
-        DirectionLogic();
     }
 
     // Update is called once per frame
     void FixedUpdate()
     {
-        CheckFear();
-        sprite.transform.LookAt(new Vector3(player.transform.position.x, sprite.transform.position.y, player.transform.position.z));
-        
+        if (!playerController.paused)
+        {
+            CheckFear();
+            sprite.transform.LookAt(new Vector3(player.transform.position.x, sprite.transform.position.y, player.transform.position.z));
+        }
     }
 
     public void StateLogic()
@@ -132,7 +150,6 @@ public class EnemyController : MonoBehaviour
             if (seeksCover && !inCover)
             {
                 currentState = CurrentState.COVERING;
-                //check cover distance
                 Vector2 sortVector = new Vector2(Mathf.Infinity, 0);
                 foundCover = false;
                 if (covers.Length > 0)
@@ -153,7 +170,7 @@ public class EnemyController : MonoBehaviour
                     }
                     
                 }
-                if (/*coverDistance > coverRange*/!foundCover)
+                if (!foundCover)
                 {
                     currentState = CurrentState.ATTACKING;
                 }
@@ -167,16 +184,20 @@ public class EnemyController : MonoBehaviour
         else
         {
             isAttacking = false;
-            inCover = false; 
-            
-            currentState = CurrentState.PATROLLING;
+            inCover = false;
+
+            if (!forceIdle)
+                currentState = CurrentState.PATROLLING;
+            else
+                currentState = CurrentState.IDLE;
+
             
             if (defaultCover)
             {
                 currentState = CurrentState.COVERING;
             }
         }
-        if (hitPoints <= 1)
+        if (hitPoints <= 1 && getsAfraid)
         {
 
             currentState = CurrentState.AFRAID;
@@ -195,7 +216,6 @@ public class EnemyController : MonoBehaviour
                 case CurrentState.IDLE:
                     if (stateTimer < maxTimer)
                     {
-                        //animator.SetInteger("Direction", 0);
                         animator.SetBool("Walking", false);
                         animator.SetBool("Attacking", false);
                         agent.destination = transform.position;
@@ -212,53 +232,15 @@ public class EnemyController : MonoBehaviour
                     animator.SetBool("Walking", true);
                     animator.SetBool("Attacking", false);
 
-                    if (!agent.pathPending && agent.remainingDistance < 0.5f
-                        /*Vector3.Distance(transform.position, points[destinationPoint].transform.position) < 0.5f*/)
+                    if (!agent.pathPending && agent.remainingDistance < 0.5f)
                     {
                         GoToNextPoint();
                     }
-                    //Vector3 destination;
-                    /*if (!searching)
-                    {
-                        //Debug.Log("setting destination"); 
-                        RandomDestination(out destination);
-                        searching = true; 
-                    }
-                    agent.SetDestination(destination);
-
-                    if (stateTimer < maxTimer)
-                    {
-                        stateTimer += Time.deltaTime; 
-                    }
-
-                    if (Vector3.Distance(destination, transform.position) < 0.5f || stateTimer > maxTimer)
-                    {
-                        searching = false;
-                        stateTimer = 0; 
-                        currentState = CurrentState.IDLE; 
-                    }*/
-
                     break;
                 case CurrentState.COVERING:
                     if (!inCover && seeksCover && !foundCover)
                     {
                         Vector2 sortingVector = new Vector2(Mathf.Infinity, 100);
-                        /*if (covers.Length > 0)
-                        {
-                            for (int i = 0; i < covers.Length; i ++)
-                            {
-                                _distance123 = Vector3.Distance(transform.position, covers[i].transform.position);
-                                if (_distance123 < sortingVector.x && _distance123 < coverRange)
-                                {
-                                    sortingVector = new Vector2(_distance123, i);
-                                    foundCover = true;
-                                    coverDistance = _distance123;
-                                }
-                            }
-                        }*//*
-                        if (foundCover)
-                        {
-                        }*/
                     }
                     if (foundCover)
                     {
@@ -310,33 +292,6 @@ public class EnemyController : MonoBehaviour
                 case CurrentState.AFRAID:
                     animator.SetBool("Walking", true);
                     animator.SetBool("Attacking", false);
-                    //transform.Find("Sprite").GetComponent<SpriteRenderer>().color = new Color(253, 120, 120, 255);
-
-                    /*Ray ray = new Ray(head.transform.position, player.transform.forward);
-                    RaycastHit hit;
-                    if (!Physics.Raycast(ray, out hit, 2))
-                    {
-                        agent.destination = hit.point;
-                    }
-                    else
-                    {
-                        //List<Vector2> sortingVectors;
-                        Vector2 sortingVector = new Vector2(Mathf.Infinity, 100);
-                        bool _found = false;
-                        for (int i = 0; i < points.Length; i++)
-                        {
-                            float distance = Vector3.Distance(transform.position, points[i].transform.position);
-                            if (distance < sortingVector.x && distance > 5)
-                            {
-                                sortingVector = new Vector2(distance, i);
-                                found = true;
-                            }
-                        }
-                        if (_found)
-                        {
-                            agent.destination = points[(int)sortingVector.y].transform.position;
-                        }
-                    }*/
                     Vector2 _sortingVector = new Vector2(Mathf.Infinity, 100);
                     bool _found = false;
                     for (int i = 0; i < points.Length; i++)
@@ -362,6 +317,8 @@ public class EnemyController : MonoBehaviour
             if (!isDead)
             {
                 animator.SetTrigger("Dead");
+                painAudioSource.clip = deathGrunts[Random.Range(0, deathGrunts.Length)];
+                painAudioSource.Play();
                 isDead = true;
             }
             else
@@ -382,7 +339,6 @@ public class EnemyController : MonoBehaviour
         {
             direction = Direction.FRONT;
             animator.SetInteger("Direction", 1);
-            //Debug.Log("front " + direction);
         }
         else
         {
@@ -422,15 +378,12 @@ public class EnemyController : MonoBehaviour
         RaycastHit hit;
         var dotProduct = Vector3.Dot(transform.forward, heading.normalized);
         dot_product = dotProduct;
-        //Debug.Log(dotProduct);
         if (dotProduct > 0.25 || aggroed)
         {
-            //Debug.DrawRay(origin, _direction * range, Color.red * range, 1, true);
             if (Physics.Raycast(ray, out hit, range))
             {
                 if (hit.transform.CompareTag("Player"))
                 {
-                    //Debug.Log("Player Visible");
                     if (hit.distance < attackRange)
                     {
                         can_attack = true;
@@ -442,6 +395,16 @@ public class EnemyController : MonoBehaviour
                     return true;
                 }
             }
+        }
+        if (dotProduct < 0)
+            //probably fixed 
+        {
+            Vector3 scale = sprite.transform.localScale;
+            sprite.transform.localScale = new Vector3(-scale.x, scale.y, scale.z);
+        }
+        else
+        {
+            sprite.transform.localScale = originalScale;
         }
         
         can_attack = false;
@@ -469,15 +432,6 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-    /*private void GoCurrentPoint()
-    {
-
-        if (Vector3.Distance(transform.position, points[destinationPoint].transform.position) > 0.5f && currentState == CurrentState.PATROLLING)
-        {
-            Debug.Log("CURRENT POINTING time " + Time.time);
-            agent.destination = points[destinationPoint].position;
-        }
-    }*/
 
     private void PatrolReset()
     {
@@ -505,7 +459,7 @@ public class EnemyController : MonoBehaviour
 
     private void AttackPlayer()
     {
-        audioSource.Play();
+        shotAudioSource.Play();
 
         if (playerStats.armor > 0)
         {
@@ -523,6 +477,11 @@ public class EnemyController : MonoBehaviour
         if (playerStats.health <= 0)
         {
             playerStats.PlayerDead();
+            player.GetComponent<PlayerController>().PlayerHit();
+        }
+        else
+        {
+            player.GetComponent<PlayerController>().PlayerHit();
         }
     }
 
@@ -540,8 +499,24 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    public void EnemyHit(int damageTaken)
+    {
+        hitPoints = hitPoints - damageTaken;
+
+        if (hitPoints > 0)
+        {
+            painAudioSource.clip = painGrunts[(int)Random.Range(0, painGrunts.Length)];
+            painAudioSource.Play();
+        }
+        else
+        {
+            EnemyDied();
+        }
+    }
+
     public void EnemyDied()
     {
+
         if (dropsKeycard)
         {
             GameObject keycardPickUp = Instantiate(keycard, GameObject.FindGameObjectWithTag("GameManager").transform);

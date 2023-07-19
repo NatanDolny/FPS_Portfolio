@@ -11,14 +11,31 @@ public class PlayerController : MonoBehaviour
     private PlayerStats playerStats;
     private Rigidbody rb; 
 
-    private AudioSource audioSource;
+    private AudioSource shotSource;
+    private AudioSource painSource;
+
+    public AudioClip[] painGrunts;
+    public AudioClip deathGrunt;
+    public AudioClip gunAudio;
+    public AudioClip rocketAudio;
+
 
     public GameObject gameManager;
     public GameObject gun;
     public Animator gunAnimator;
+    public GameObject rocketLauncher;
+    public Animator rocketAnimator;
+    public GameObject rLAnimator;
+
     public bool canShoot = true;
     public float reloadTimer = 0;
     public float reloadDuration = 1.5f;
+    public Gun equippedGun;
+
+
+    public bool rocketEquipped = false;
+    public int rocketAmmo = 0;
+
     public GameObject upperBody;
     public GameObject cameraObject;
     //public Transform shootingPoint; 
@@ -30,24 +47,26 @@ public class PlayerController : MonoBehaviour
     public Vector2 mouseRotation; 
 
     public float moveVelocity = 10;
-    public float jumpVelocity = 100; 
+    public float jumpVelocity = 100;
+
+    PauseMenu pauseMenu;
+    [HideInInspector] public bool paused;
 
     private void Awake()
     {
         playerMovement = new PlayerMovement();
-        //inputController = GetComponent<InputAction>();
-        //playerInput = GetComponent<PlayerInput>(); 
         gameManager = GameObject.FindGameObjectWithTag("GameManager");
-        //shootingPoint.position = gun.transform.Find("ShootingPoint").position;
-        //gun.GetComponent<Gun>().shootingPoint = shootingPoint; 
-        //upperBody = transform.Find("PlayerBody").Find("UpperBody").gameObject;
         cameraObject = transform.Find("Main Camera").gameObject;
         gun = cameraObject.transform.Find("Gun").gameObject;
+        rocketLauncher = cameraObject.transform.Find("RocketLauncher").gameObject;
+        Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
-        //Cursor.visible = false;
         rb = GetComponent<Rigidbody>(); 
         playerMovement.Movement.Attack.performed += LeftClick;
         playerMovement.Movement.Jump.performed += Jump;
+        playerMovement.Movement.Swap.performed += Swap;
+        playerMovement.Movement.Pause.performed += Pause;
+        pauseMenu = transform.Find("PauseMenu").GetComponent<PauseMenu>();
     }
 
     private void OnEnable()
@@ -59,54 +78,48 @@ public class PlayerController : MonoBehaviour
     {
         playerMovement.Disable(); 
     }
-    // Start is called before the first frame update
+
     void Start()
     {
         Invoke("SetRotation", 0.05f);
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
         playerStats = GetComponent<PlayerStats>();
-        audioSource = transform.Find("AudioSource").GetComponent<AudioSource>();
+        shotSource = transform.Find("ShotSource").GetComponent<AudioSource>();
+        painSource = transform.Find("PainSource").GetComponent<AudioSource>();
         gunAnimator = gun.transform.Find("Body").GetComponent<Animator>();
-        //upperBody.transform.eulerAngles = new Vector3(0, 0, 0);
+        rocketAnimator = rocketLauncher.transform.Find("Body").GetComponent<Animator>();
+        rocketEquipped = false;
+        rocketLauncher.transform.Find("Body").gameObject.SetActive(false);
+        equippedGun = gun.GetComponent<Gun>();
     }
 
-    // Update is called once per frame
+
     void Update()
     {
         Movement(); 
         CameraControl();
     }
+    private void FixedUpdate()
+    {
+        playerStats.ammo = equippedGun.currentAmmo;
+    }
 
     public void CameraControl()
     {
-        if (!playerStats.playerDead)
+        if (!playerStats.playerDead && !pauseMenu.paused)
         {
             mouseRotation = Mouse.current.delta.ReadValue();
-            xRotation -= mouseRotation.y * Time.deltaTime * mouseXSens;
-            yRotation += mouseRotation.x * Time.deltaTime * mouseYSens;
+            xRotation -= mouseRotation.y * Time.deltaTime * mouseXSens * MouseSens.mouseSensitivity;
+            yRotation += mouseRotation.x * Time.deltaTime * mouseYSens * MouseSens.mouseSensitivity;
             xRotation = Mathf.Clamp(xRotation, -30, 60);
             cameraObject.transform.rotation = Quaternion.Euler(xRotation, yRotation, 0);
         }
-        
-        //transform.Find("Texture").transform.rotation = cameraObject.transform.rotation;
     }
 
     public void Movement()
     {
-        if (!canShoot)
-        {
-            reloadTimer += Time.deltaTime;
-            if (reloadTimer > reloadDuration)
-            {
-                canShoot = true;
-                reloadTimer = 0;
-            }
-        }
-        if (!playerStats.playerDead)
+        if (!playerStats.playerDead && !pauseMenu.paused)
         {
             Vector2 movement = playerMovement.Movement.Movement.ReadValue<Vector2>();
-            //Vector3 finalVelocities = new Vector3();
             var forward = cameraObject.transform.forward;
             var right = cameraObject.transform.right;
             forward.y = 0;
@@ -116,31 +129,86 @@ public class PlayerController : MonoBehaviour
             var desiredDirection = forward * movement.y + right * movement.x;
             rb.velocity = (forward * movement.y + right * movement.x) * moveVelocity;
             rb.angularVelocity = Vector3.zero;
-            //transform.Translate(desiredDirection * moveVelocity * Time.deltaTime);
         }
-        
+    }
+
+    public void Swap(InputAction.CallbackContext ctx)
+    {
+        if (!pauseMenu.paused)
+        {
+            if (equippedGun.gunType == Gun.GunType.AR)
+            {
+                rocketLauncher.transform.Find("Body").gameObject.SetActive(true);
+                gun.transform.Find("Body").gameObject.SetActive(false);
+                playerStats.ammo = rocketLauncher.GetComponent<Gun>().currentAmmo;
+                equippedGun = rocketLauncher.GetComponent<Gun>();
+            }
+            else
+            {
+                rocketLauncher.transform.Find("Body").gameObject.SetActive(false);
+                gun.transform.Find("Body").gameObject.SetActive(true);
+                playerStats.ammo = gun.GetComponent<Gun>().currentAmmo;
+                equippedGun = gun.GetComponent<Gun>();
+            }
+        }
     }
 
     public void Jump(InputAction.CallbackContext ctx)
     {
-        //rb.velocity = new Vector3(rb.velocity.x, 5, rb.velocity.z); 
 
+    }
+
+    public void Pause(InputAction.CallbackContext ctx)
+    {
+        if (!pauseMenu.paused)
+        {
+            pauseMenu.paused = true;
+        }
+        else
+        {
+            Debug.Log("REPREESSED ESC");
+            pauseMenu.paused = false;
+        }
+        paused = pauseMenu.paused; 
+        Debug.Log("paused is: " + paused + " or pause pause " + pauseMenu.paused);
+        pauseMenu.Initialise(pauseMenu.paused);
     }
 
     public void LeftClick(InputAction.CallbackContext ctx)
     {
-        if (!playerStats.playerDead && canShoot)
+        if (!playerStats.playerDead && equippedGun.reloaded && equippedGun.currentAmmo > 0 && !pauseMenu.paused)
         {
-            canShoot = false;
-            gunAnimator.SetTrigger("Attack");
-            audioSource.Play();
-            if (gun.GetComponent<Gun>().Attack())
+            if (equippedGun.gunType == Gun.GunType.ROCKET)
             {
-                Debug.Log("enemy hit");
+                playerStats.ammo = rocketLauncher.GetComponent<Gun>().currentAmmo;
+                rocketAnimator.SetTrigger("Attack");
+                rocketLauncher.GetComponent<Gun>().Attack();
+                shotSource.clip = rocketAudio;
+                shotSource.Play();
+                rocketLauncher.GetComponent<Gun>().Reload();
             }
-            else
+            else if (equippedGun.gunType == Gun.GunType.AR)
             {
-                Debug.Log("MISSED");
+                playerStats.ammo = gun.GetComponent<Gun>().currentAmmo;
+                gunAnimator.SetTrigger("Attack");
+                gun.GetComponent<Gun>().Attack();
+                shotSource.clip = gunAudio;
+                shotSource.Play();
+                gun.GetComponent<Gun>().Reload();
+            }
+            GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+            foreach (GameObject enemy in enemies)
+            {
+                EnemyController controller;
+                if (enemy.TryGetComponent<EnemyController>(out controller))
+                {
+                    if (Vector3.Distance(enemy.transform.position, transform.position) < controller.sightRange)
+                    {
+                        enemy.transform.LookAt(new Vector3(transform.position.x, controller.sprite.transform.position.y, transform.position.z));
+                        if (controller.currentState != EnemyController.CurrentState.ATTACKING)
+                            controller.currentState = EnemyController.CurrentState.IDLE;
+                    }
+                }
             }
         }
     }
@@ -148,5 +216,18 @@ public class PlayerController : MonoBehaviour
     void SetRotation()
     {
         cameraObject.transform.rotation = Quaternion.Euler(0, 180, 0);
+    }
+
+    public void PlayerHit()
+    {
+        if (playerStats.health > 0)
+        {
+            painSource.clip = painGrunts[Random.Range(0, painGrunts.Length)];
+        }
+        else
+        {
+            painSource.clip = deathGrunt;
+        }
+        painSource.Play();
     }
 }

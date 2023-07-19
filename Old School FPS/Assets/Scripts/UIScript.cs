@@ -11,6 +11,7 @@ public class UIScript : MonoBehaviour
     public Image keycardImage;
     public TMP_Text armorTmp;
     public TMP_Text healthTmp;
+    public TMP_Text ammoTmp;
     public Sprite healthy;
     public Sprite damaged;
     public Sprite critical;
@@ -21,14 +22,17 @@ public class UIScript : MonoBehaviour
         keycardImage = transform.Find("Keycard").GetComponent<Image>();
         healthTmp = transform.Find("Health").GetComponent<TMP_Text>();
         armorTmp = transform.Find("Armor").GetComponent<TMP_Text>();
+        ammoTmp = transform.Find("Ammo").GetComponent<TMP_Text>();
         playerStats = GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerStats>();
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         armorTmp.text = "" + playerStats.armor;
         healthTmp.text = "" + playerStats.health;
+        ammoTmp.text = "" + playerStats.ammo;
+
         if (playerStats.canProceed)
         {
             keycardImage.enabled = true;

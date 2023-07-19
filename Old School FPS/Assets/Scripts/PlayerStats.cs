@@ -8,8 +8,10 @@ public class PlayerStats : MonoBehaviour
     public bool playerDead = false;
     public int health = 100;
     public int armor = 0;
+    public int ammo = 1; 
     public AudioSource keySound;
-    public AudioSource armorSound; 
+    public AudioSource armorSound;
+    public AudioSource ammoSound;
     public bool canProceed = false;
     public float endTimer = 0;
     public float endMax = 2;
@@ -19,6 +21,7 @@ public class PlayerStats : MonoBehaviour
     {
         keySound = transform.Find("PickUp").GetComponent<AudioSource>();
         armorSound = transform.Find("Armor").GetComponent<AudioSource>();
+        ammoSound = transform.Find("Ammo").GetComponent<AudioSource>();
     }
 
     // Update is called once per frame
